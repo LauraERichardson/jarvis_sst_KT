@@ -16,7 +16,7 @@ bathy = raster("data/pibhmc_bathy_5m_jarvis_ea1e_3b5a_8f11.nc")
 # jplMUR: a merged, multi-sensor L4 Foundation Sea Surface Temperature (SST) analysis product from Jet Propulsion Laboratory (JPL). This daily, global, Multi-scale, Ultra-high Resolution (MUR) Sea Surface Temperature (SST) 1-km data set, Version 4.1, is produced at JPL under the NASA MEaSUREs program. 
 
 sst_source = c("data/Jarvis_Sea_Surface_Temperature_CRW_Daily_1985-04-01_2023-07-31.nc",
-               "data/Jarvis_Sea_Surface_Temperature_jplMUR_Daily_2002-06-01_2023-07-31.nc")[1]
+               "data/Jarvis_Sea_Surface_Temperature_jplMUR_Daily_2002-06-01_2023-07-31.nc")[2]
 
 # Load the SST nc file and process it
 sst <- stack(sst_source) %>% 
@@ -35,7 +35,7 @@ sst <- stack(sst_source) %>%
 monthly_mean_sd = sst %>%
   select(year, month, day, sst) %>%
   slice(-c(1, 2)) %>% 
-  # filter(year %in% c(1985:2004)) %>% 
+  # filter(year %in% c(1985:2004)) %>%
   group_by(year, month) %>% 
   summarise(sst = mean(sst)) %>%
   group_by(month) %>%
@@ -87,6 +87,7 @@ p2 = df %>%
   scale_fill_gradientn("Summer Temperature SD (deg C)", colours = matlab.like(100))
 
 p1 + p2
+ggsave(last_plot(), filename = "output/jarvis_mean_sd.png", width = 10, height = 5, units = "in")
 
 # Hot Snaps occurred when the temperature exceeded the baseline, defined for Hot Snaps as one standard deviation above the summer mean. 
 hot_snaps <- monthly_mean_sd %>%
@@ -132,15 +133,14 @@ hotsnap_record <- hotsnap_record %>%
   ) %>% 
   select(year, month, day, hotsnap)
 
+# Rescale hotsnap column between 0 and 1
+hotsnap_record <- hotsnap_record %>%
+  mutate(hotsnap_rescaled = (hotsnap - min(hotsnap)) / (max(hotsnap) - min(hotsnap)))
 
-
-
-
-
-
-
-
-
-
-
+hotsnap_record %>% 
+  ggplot(aes(x = as.Date(paste(year, month, day, sep = "-")), y = hotsnap_rescaled, fill = hotsnap_rescaled)) +
+  geom_point(shape = 21) +
+  scale_fill_gradientn(colors = matlab.like(100), "") + 
+  labs(x = "Date", y = "hotsnap occurance")
+ggsave(last_plot(), filename = "output/jarvis_hotsnap_ts.png", width = 7, height = 5, units = "in")
 
