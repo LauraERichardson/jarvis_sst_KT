@@ -16,7 +16,7 @@ bathy = raster("data/pibhmc_bathy_5m_jarvis_ea1e_3b5a_8f11.nc")
 # jplMUR: a merged, multi-sensor L4 Foundation Sea Surface Temperature (SST) analysis product from Jet Propulsion Laboratory (JPL). This daily, global, Multi-scale, Ultra-high Resolution (MUR) Sea Surface Temperature (SST) 1-km data set, Version 4.1, is produced at JPL under the NASA MEaSUREs program. 
 
 sst_source = c("data/Jarvis_Sea_Surface_Temperature_CRW_Daily_1985-04-01_2023-07-31.nc",
-               "data/Jarvis_Sea_Surface_Temperature_jplMUR_Daily_2002-06-01_2023-07-31.nc")[2]
+               "data/Jarvis_Sea_Surface_Temperature_jplMUR_Daily_2002-06-01_2023-07-31.nc")[1]
 
 # Load the SST nc file and process it
 sst <- stack(sst_source) %>% 
@@ -35,7 +35,7 @@ sst <- stack(sst_source) %>%
 monthly_mean_sd = sst %>%
   select(year, month, day, sst) %>%
   slice(-c(1, 2)) %>% 
-  # filter(year %in% c(1985:2004)) %>%
+  filter(year %in% c(1985:2018)) %>%
   group_by(year, month) %>% 
   summarise(sst = mean(sst)) %>%
   group_by(month) %>%
@@ -51,6 +51,7 @@ grid = sst[1:2, ] %>% select(starts_with("V"))
 
 df = sst %>% 
   slice(-c(1, 2)) %>% 
+  filter(year %in% c(1985:2018)) %>%
   select(year, month, day, starts_with("V")) %>%
   filter(month %in% warmest_months$month) %>% 
   select(starts_with("V"))
@@ -59,7 +60,7 @@ df = rbind(grid, df) %>%
   t() %>% 
   as.data.frame() %>% 
   mutate(
-   sst = rowMeans(select(., starts_with("X")), na.rm = T)
+    sst = rowMeans(select(., starts_with("X")), na.rm = T)
   ) %>% 
   select(x, y, sst)
 
@@ -67,7 +68,7 @@ p1 = df %>%
   ggplot(aes(x, y, fill = sst)) + 
   geom_raster() + 
   scale_fill_gradientn("Summer Temperature Mean (deg C)", colours = matlab.like(100))
-  
+
 # 3. summer standard deviation for each pixel to define "Hot Snaps"
 df = sst %>% 
   slice(-c(1, 2)) %>% 
@@ -86,7 +87,7 @@ p2 = df %>%
   geom_raster() + 
   scale_fill_gradientn("Summer Temperature SD (deg C)", colours = matlab.like(100))
 
-p1 + p2
+p1 / p2
 ggsave(last_plot(), filename = "output/jarvis_mean_sd.png", width = 10, height = 5, units = "in")
 
 # Hot Snaps occurred when the temperature exceeded the baseline, defined for Hot Snaps as one standard deviation above the summer mean. 
@@ -96,12 +97,7 @@ hot_snaps <- monthly_mean_sd %>%
 
 month = unique(warmest_months$month)
 
-# Function to replace values
-replace_above_threshold <- function(x, threshold) {
-  ifelse(x > threshold, 1, 0)
-}
-
-hotsnap_record = NULL
+snap_record = NULL
 
 for (m in 1:length(month)) {
   
@@ -115,32 +111,21 @@ for (m in 1:length(month)) {
     filter(month %in% hot_snap$month) %>% 
     select(year, month, day, starts_with("V"))
   
-  # Apply the function to columns that start with "V"
   df_i <- df_i %>%
-    mutate(across(starts_with("V"), ~ replace_above_threshold(., threshold)))
+    mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE)) %>% 
+    select(year, month, day, V)
   
-  hotsnap_record = rbind(hotsnap_record, df_i)
+  df_i = df_i %>% 
+    mutate(snap = ifelse(V > threshold, 1, 0))
+  
+  snap_record = rbind(snap_record, df_i)
   
 }
 
-hotsnap_record <- hotsnap_record %>%
-  mutate(
-    date = row.names(.),
-    year = as.numeric(substring(date, 2, 5)),
-    month = substring(date, 7, 8),
-    day = substring(date, 10, 11),
-    hotsnap = rowSums(select(., starts_with("V")), na.rm = T)
-  ) %>% 
-  select(year, month, day, hotsnap)
+snap_record %>%
+  ggplot(aes(x = as.Date(paste(year, month, day, sep = "-")), y = V, color = factor(snap))) +
+  geom_point() +
+  scale_color_manual(values = c("0" = "blue", "1" = "red"))
 
-# Rescale hotsnap column between 0 and 1
-hotsnap_record <- hotsnap_record %>%
-  mutate(hotsnap_rescaled = (hotsnap - min(hotsnap)) / (max(hotsnap) - min(hotsnap)))
-
-hotsnap_record %>% 
-  ggplot(aes(x = as.Date(paste(year, month, day, sep = "-")), y = hotsnap_rescaled, fill = hotsnap_rescaled)) +
-  geom_point(shape = 21) +
-  scale_fill_gradientn(colors = matlab.like(100), "") + 
-  labs(x = "Date", y = "hotsnap occurance")
 ggsave(last_plot(), filename = "output/jarvis_hotsnap_ts.png", width = 7, height = 5, units = "in")
 
