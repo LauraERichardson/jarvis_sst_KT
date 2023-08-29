@@ -52,6 +52,7 @@ compute.the = function (x, y, z = "week") {
     dhw.climatology <- bind_rows(dhw_list)
     dhw.summary <- merge(dhw.ts, dhw.climatology, by = "event_id")
     (dhw.summary$DHW)
+    
   }
   
   df1$DHW = compute.dhw(df1$date, df1$TSA)
