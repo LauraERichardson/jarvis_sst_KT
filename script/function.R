@@ -32,13 +32,14 @@ compute.the = function (x, y, z = "week") {
     dhw.ts$week <- week(dhw.ts$date)
     dhw.ts$year <- year(dhw.ts$date)
     dhw.ts$TSA <- y
-    dhw.ts$tsa_dhw <- ifelse(dhw.ts$TSA >= 1, dhw.ts$TSA, 
-                             0)
-    nz <- ifelse(z == "month", 89, ifelse(z == "week", 11, 
-                                          "NA"))
+    dhw.ts$tsa_dhw <- ifelse(dhw.ts$TSA >= 1, dhw.ts$TSA, 0)
+    
+    nz <- ifelse(z == "month", 89, ifelse(z == "week", 11, "NA"))
+    
     dhw <- function(event_id) {
-      sum(dhw.ts$tsa_dhw[dhw.ts$event_id >= event_id - 
-                           nz & dhw.ts$event_id <= event_id])
+    
+        sum(dhw.ts$tsa_dhw[dhw.ts$event_id >= event_id - nz & dhw.ts$event_id <= event_id])
+      
     }
     
     for (i in unique(dhw.ts$event_id)) {
