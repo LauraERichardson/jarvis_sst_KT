@@ -1,7 +1,10 @@
 library(dplyr)
 library(THE)
+library(raster)
 
 rm(list = ls())
+
+select = dplyr::select
 
 source("script/function.R")
 
@@ -23,7 +26,7 @@ sst <- stack(sst_source) %>%
 
 df = sst %>% 
   slice(-c(1, 2)) %>% 
-  filter(year %in% c(2010:2020)) %>%
+  filter(year %in% c(2015:2018)) %>%
   # filter(month %in% hot_snap$month) %>%
   select(year, month, day, starts_with("V")) %>% 
   mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE),
