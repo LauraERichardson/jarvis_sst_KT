@@ -101,6 +101,9 @@ compute.snap = function (x, y, z = "week") {
   
   compute.dhw <- function(x, y) {
     
+    # x = df1$date
+    # y = df1$TSA
+    
     dhw.ts <- as.data.frame(x)
     dhw.ts$event_id <- seq(1, length(dhw.ts$x))
     colnames(dhw.ts)[1] <- c("date")
