@@ -24,17 +24,16 @@ sst <- stack(sst_source) %>%
     sst = rowMeans(select(., starts_with("V")), na.rm = T)
   ) 
 
-df = sst %>% 
+sst_i = sst %>% 
   slice(-c(1, 2)) %>% 
   filter(year %in% c(2015:2018)) %>%
-  # filter(month %in% hot_snap$month) %>%
   select(year, month, day, starts_with("V")) %>% 
   mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE),
          date = as.Date(paste(year, month, day, sep = "-"), format = "%Y-%m-%d"),
          sst = V) %>% 
   select(year, month, day, date, sst)
 
-test = compute.the(x = df$date, df$sst, z = "week")
-
-plot.the(test)
-
+test = compute.dhw(x = sst_i$date, sst_i$sst, z = "week"); plot.dhw(test)
+test = compute.dhw(x = sst_i$date, sst_i$sst, z = "month"); plot.dhw(test)
+test = compute.snap(x = sst_i$date, sst_i$sst, z = "week"); plot.snap(test)
+test = compute.snap(x = sst_i$date, sst_i$sst, z = "month"); plot.snap(test)
