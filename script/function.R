@@ -68,9 +68,9 @@ compute.dhw = function (x, y, z = "week") {
 
 compute.snap = function (x, y, z = "week") {
   
-  x = sst_i$date
-  y = sst_i$sst
-  z = "month"
+  # x = sst_i$date
+  # y = sst_i$sst
+  # z = "month"
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -232,7 +232,7 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
   p <- ggplot(df1) + 
     geom_line(aes(x = date, y = SST), color = "blue") + 
     geom_point(aes(x = date, y = climatology), color = "black", size = 0.1) + 
-    geom_hline(yintercept = max(df1$climatology) + 1, color = "blue", lty = 3) + 
+    geom_hline(yintercept = max(df1$climatology) + max(df1$sd), color = "blue", lty = 3) + 
     geom_hline(yintercept = max(df1$climatology), color = "blue", lty = 2, size = 0.25) +
     geom_line(aes(x = date, y = DHW * sst.offset), color = "red") +
     geom_hline(yintercept = 4 * sst.offset, color = "red", lty = 2, size = 0.25) + 
