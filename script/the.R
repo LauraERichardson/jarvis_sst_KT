@@ -26,7 +26,7 @@ sst <- stack(sst_source) %>%
 
 sst_i = sst %>% 
   slice(-c(1, 2)) %>% 
-  filter(year %in% c(2015:2018)) %>%
+  filter(year %in% c(2014:2017)) %>%
   select(year, month, day, starts_with("V")) %>% 
   mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE),
          date = as.Date(paste(year, month, day, sep = "-"), format = "%Y-%m-%d"),
