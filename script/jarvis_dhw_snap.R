@@ -22,18 +22,21 @@ sst <- stack(sst_source) %>%
     month = substring(date, 7, 8),
     day = substring(date, 10, 11),
     sst = rowMeans(select(., starts_with("V")), na.rm = T)
-  ) 
+  )
 
 sst_i = sst %>% 
   slice(-c(1, 2)) %>% 
-  filter(year %in% c(2014:2017)) %>%
+  # filter(year %in% c(2014:2018)) %>%
+  filter(year %in% c(1985:2018)) %>%
   select(year, month, day, starts_with("V")) %>% 
   mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE),
          date = as.Date(paste(year, month, day, sep = "-"), format = "%Y-%m-%d"),
          sst = V) %>% 
   select(year, month, day, date, sst)
 
-test = compute.dhw(x = sst_i$date, sst_i$sst, z = "week"); plot.dhw(test)
-test = compute.dhw(x = sst_i$date, sst_i$sst, z = "month"); plot.dhw(test)
-test = compute.snap(x = sst_i$date, sst_i$sst, z = "week"); plot.snap(test)
-test = compute.snap(x = sst_i$date, sst_i$sst, z = "month"); plot.snap(test)
+dhw = compute.dhw(x = sst_i$date, sst_i$sst, z = "week"); plot.dhw(test)
+dhw = compute.dhw(x = sst_i$date, sst_i$sst, z = "month"); plot.dhw(test)
+snap = compute.snap(x = sst_i$date, sst_i$sst, z = "week"); plot.snap(snap)
+snap = compute.snap(x = sst_i$date, sst_i$sst, z = "month"); plot.snap(snap)
+
+ggsave(last_plot(), filename = "output/jarvis_hotsnap_ts.png", height = 8, width = 16)

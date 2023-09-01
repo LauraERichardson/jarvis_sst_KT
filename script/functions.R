@@ -29,7 +29,7 @@ compute.dhw = function (x, y, z = "week") {
   df_i$TSA = df_i$estimate - max(df_i$climatology)
   df_i$TSA = ifelse(df_i$TSA > 0, df_i$TSA, 0)
   
-  compute.dhw.snap <- function(x, y) {
+  compute.dhw <- function(x, y) {
     
     dhw.ts <- as.data.frame(x)
     dhw.ts$event_id <- seq(1, length(dhw.ts$x))
@@ -60,18 +60,17 @@ compute.dhw = function (x, y, z = "week") {
     
   }
   
-  df_i$DHW_cml = compute.dhw.snap(df_i$date, df_i$TSA)
+  df_i$DHW = compute.dhw(df_i$date, df_i$TSA)
   colnames(df_i)[2] <- "SST"
-  df2 <- dplyr::select(df_i, date, SST, climatology, SSTA, TSA, DHW_cml)
-  write_csv(df2, file = "output/jarvis_dhw_ts.csv")
-  
+  df2 <- dplyr::select(df_i, date, SST, climatology, SSTA, TSA, 
+                       DHW)
 }
 
 compute.snap = function (x, y, z = "week") {
   
-  # x = sst_i$date
-  # y = sst_i$sst
-  # z = "month"
+  x = sst_i$date
+  y = sst_i$sst
+  z = "month"
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -142,10 +141,10 @@ compute.snap = function (x, y, z = "week") {
   df_i$HSNAP = df_i$estimate - (df_i$climatology + df_i$sd)
   # df_i$HSNAP = ifelse(df_i$HSNAP > 0, df_i$HSNAP, 0)
   
-  compute.dhw.snap <- function(x, y) {
+  compute.dhw <- function(x, y) {
     
-    x = df_i$date
-    y = df_i$HSNAP
+    # x = df_i$date
+    # y = df_i$HSNAP
     
     dhw.ts <- as.data.frame(x)
     dhw.ts$event_id <- seq(1, length(dhw.ts$x))
@@ -153,7 +152,7 @@ compute.snap = function (x, y, z = "week") {
     dhw.ts$week <- week(dhw.ts$date)
     dhw.ts$year <- year(dhw.ts$date)
     dhw.ts$TSA <- y
-    dhw.ts$tsa_dhw <- ifelse(dhw.ts$TSA >= 0, dhw.ts$TSA, 0)
+    dhw.ts$tsa_dhw <- ifelse(dhw.ts$TSA >= 1, dhw.ts$TSA, 0)
     
     nz <- ifelse(z == "month", 89, ifelse(z == "week", 11, "NA"))
     
@@ -176,10 +175,9 @@ compute.snap = function (x, y, z = "week") {
     
   }
   
-  df_i$HSNAP_cml = compute.dhw.snap(df_i$date, df_i$HSNAP)
+  df_i$DHW = compute.dhw(df_i$date, df_i$HSNAP)
   colnames(df_i)[2] <- "SST"
-  df2 <- dplyr::select(df_i, date, SST, climatology, sd, SSTA, TSA, HSNAP, HSNAP_cml)
-  write_csv(df2, file = "output/jarvis_hotsnap_ts.csv")
+  df2 <- dplyr::select(df_i, date, SST, climatology, sd, SSTA, TSA, HSNAP, DHW)
 }
 
 plot.dhw = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, height = 4) {
@@ -246,9 +244,9 @@ plot.dhw = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, h
 
 plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, height = 4) {
   
-  # df = snap
-  # start = NULL
-  # end = NULL
+  df = snap
+  start = NULL
+  end = NULL
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -274,21 +272,21 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
     ungroup() %>%
     filter(date >= ifelse(is.null(start), first(date), start) & date <= ifelse(is.null(start), last(date), end))
   
-  sst.offset <- max(df_i$SST)/max(df_i$HSNAP_cml)
-  sec.axis.offset <- max(df_i$HSNAP_cml)/max(df_i$SST)
+  sst.offset <- max(df_i$SST)/max(df_i$DHW)
+  sec.axis.offset <- max(df_i$DHW)/max(df_i$SST)
   
   p <- ggplot(df_i) + 
     geom_line(aes(x = date, y = SST), color = "blue") + 
     geom_point(aes(x = date, y = climatology), color = "black", size = 0.1) + 
     geom_hline(yintercept = df$climatology + df$sd, color = "blue", lty = 3) + 
-    geom_hline(yintercept = df$climatology, color = "blue", lty = 2) +
-    geom_line(aes(x = date, y = HSNAP_cml * sst.offset), color = "red") +
+    geom_hline(yintercept = df$climatology, color = "blue", lty = 2, size = 0.25) +
+    geom_line(aes(x = date, y = DHW * sst.offset), color = "red") +
     # geom_hline(yintercept = 4 * sst.offset, color = "red", lty = 2, size = 0.25) + 
     # geom_hline(yintercept = 8 * sst.offset, color = "red", lty = 3) +
     xlab(expression("Date")) + 
     ylab(expression(SST ~ (degree ~ C))) +
     scale_y_continuous(sec.axis = sec_axis(~. * sec.axis.offset, name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks)))) +
-    scale_x_date(date_breaks = "2 years", date_labels = "%Y", "") +
+    scale_x_date(date_breaks = "4 years", date_labels = "%Y", "") +
     theme_classic() +
     theme(axis.ticks.y.right = element_line(color = "red"),
           axis.text.y.right = element_text(color = "red"),
