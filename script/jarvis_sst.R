@@ -18,6 +18,8 @@ bathy = raster("data/pibhmc_bathy_5m_jarvis_ea1e_3b5a_8f11.nc")
 sst_source = c("data/Jarvis_Sea_Surface_Temperature_CRW_Daily_1985-04-01_2023-07-31.nc",
                "data/Jarvis_Sea_Surface_Temperature_jplMUR_Daily_2002-06-01_2023-07-31.nc")[1]
 
+select = dplyr::select
+
 # Load the SST nc file and process it
 sst <- stack(sst_source) %>% 
   rasterToPoints() %>% 
@@ -41,11 +43,13 @@ monthly_mean_sd = sst %>%
   group_by(month) %>%
   summarise(
     mean = mean(sst),
-    sd = sd(sst))
+    sd = sd(sst)) %>% 
+  print()
 
 # 2. pixel-by-pixel summer mean temperature by averaging all SST values from the three climatologically warmest months
 warmest_months <- monthly_mean_sd %>%
-  top_n(3, mean)
+  top_n(3, mean) %>% 
+  print()
 
 grid = sst[1:2, ] %>% select(starts_with("V"))
 
@@ -88,7 +92,7 @@ p2 = df %>%
   scale_fill_gradientn("Summer Temperature SD (deg C)", colours = matlab.like(100))
 
 p1 / p2
-ggsave(last_plot(), filename = "output/jarvis_mean_sd.png", width = 10, height = 5, units = "in")
+ggsave(last_plot(), filename = "output/jarvis_mean_sd.png", width = 10, height = 10)
 
 # Hot Snaps occurred when the temperature exceeded the baseline, defined for Hot Snaps as one standard deviation above the summer mean. 
 hot_snaps <- monthly_mean_sd %>%
