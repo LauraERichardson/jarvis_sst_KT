@@ -26,18 +26,17 @@ sst <- stack(sst_source) %>%
 
 sst_i = sst %>% 
   slice(-c(1, 2)) %>% 
-  # filter(year %in% c(2010:2016)) %>%
-  filter(year %in% c(1985:2018)) %>%
+  filter(year %in% c(2010:2016)) %>%
+  # filter(year %in% c(1985:2018)) %>%
   select(year, month, day, starts_with("V")) %>% 
   mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE),
          date = as.Date(paste(year, month, day, sep = "-"), format = "%Y-%m-%d"),
          sst = V) %>% 
   select(year, month, day, date, sst)
 
-snap = compute.snap(x = sst_i$date, sst_i$sst, z = "week")
+snap = compute.snap(x = sst_i$date, sst_i$sst)
 
 
 plot.snap(snap)
-snap = compute.snap(x = sst_i$date, sst_i$sst, z = "month"); plot.snap(snap)
 
 ggsave(last_plot(), filename = "output/jarvis_hotsnap_ts.png", height = 8, width = 16)
