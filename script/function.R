@@ -69,9 +69,9 @@ compute.dhw = function (x, y, z = "week") {
 
 compute.snap = function (x, y, z = "week") {
   
-  # x = sst_i$date
-  # y = sst_i$sst
-  # z = "month"
+  x = sst_i$date
+  y = sst_i$sst
+  z = "month"
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -154,22 +154,22 @@ compute.snap = function (x, y, z = "week") {
     
     nz <- ifelse(z == "month", 89, ifelse(z == "week", 11, "NA"))
     
-    dhw <- function(event_id) {
+    hs <- function(event_id) {
       
       sum(ts$tsa_hs[ts$event_id >= event_id - nz & ts$event_id <= event_id])
       
     }
     
     for (i in unique(ts$event_id)) {
-      x <- dhw(i)
-      y <- c(event_id = i, DHW = x)
-      assign(paste0("DHW_", i), as.data.frame(t(y)))
+      x <- hs(i)
+      y <- c(event_id = i, HS = x)
+      assign(paste0("HS_", i), as.data.frame(t(y)))
     }
     
-    dhw_list <- mget(ls(pattern = "DHW_"))
-    dhw.climatology <- bind_rows(dhw_list)
-    dhw.summary <- merge(ts, dhw.climatology, by = "event_id")
-    (dhw.summary$DHW)
+    hs_list <- mget(ls(pattern = "HS_"))
+    hs.climatology <- bind_rows(hs_list)
+    hs.summary <- merge(ts, hs.climatology, by = "event_id")
+    (hs.summary$HS)
     
   }
   
