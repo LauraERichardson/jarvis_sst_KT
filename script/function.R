@@ -83,8 +83,13 @@ compute.snap = function (x, y) {
     
     date_i <- df_i$date[i]; print(date_i)
     
-    # Find the most recent summer
-    most_recent_summer <- max(df_i$date[df_i$date < date_i & months(df_i$date) %in% summer_months])
+    # Find the beginning of most recent summer
+    # most_recent_summer <- max(df_i$date[df_i$date < date_i & months(df_i$date) %in% summer_months]); most_recent_summer
+    most_recent_summer <- df_i %>%
+      filter(date >= date_i - days(365)) %>%
+      mutate(summer_month = months(date) %in% summer_months) %>%
+      filter(summer_month) %>%
+      summarise(most_recent_summer = min(date)); most_recent_summer
     
     # Check if the most recent summer is not missing ("-Inf")
     if (!is.infinite(most_recent_summer)) {
