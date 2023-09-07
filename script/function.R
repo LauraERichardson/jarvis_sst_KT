@@ -71,7 +71,7 @@ compute.snap = function (x, y, z = "week") {
   
   x = sst_i$date
   y = sst_i$sst
-  z = "month"
+  z = "week"
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -138,44 +138,57 @@ compute.snap = function (x, y, z = "week") {
   
   df_i$SSTA = df_i$estimate - df_i$climatology
   df_i$HSNAP = df_i$estimate - (df_i$climatology + df_i$sd)
-
-  compute.snap <- function(x, y) {
+  df_i$HSNAP = ifelse(df_i$HSNAP >= 0, df_i$HSNAP, 0)
+  
+  # Convert 'date' column to Date type
+  df_i$date <- as.Date(df_i$date)
+  
+  # Initialize an empty vector to store accumulation sums
+  accumulation_sums <- numeric(nrow(df_i))
+  
+  # Iterate through the dates using a for loop
+  for (i in 1:nrow(df_i)) {
     
-    x = df_i$date
-    y = df_i$HSNAP
+    # i = 1000
     
-    ts <- as.data.frame(x)
-    ts$event_id <- seq(1, length(ts$x))
-    colnames(ts)[1] <- c("date")
-    ts$week <- week(ts$date)
-    ts$year <- year(ts$date)
-    ts$hs <- y
-    ts$tsa_hs <- ifelse(ts$hs >= 0, ts$hs, 0)
+    date_i <- df_i$date[i]; print(date_i)
     
-    nz <- ifelse(z == "month", 89, ifelse(z == "week", 11, "NA"))
+    # Find the most recent summer
+    most_recent_summer <- max(df_i$date[df_i$date < date_i & months(df_i$date) %in% c("June", "July", "August")])
     
-    hs <- function(event_id) {
+    # Check if the most recent summer is not missing ("-Inf")
+    if (!is.infinite(most_recent_summer)) {
       
-      sum(ts$tsa_hs[ts$event_id >= event_id - nz & ts$event_id <= event_id])
+      # Calculate the start date of the accumulation period (three months before the most recent summer)
+      start_date <- most_recent_summer - months(3)
+      
+      # Filter the dataframe for dates within the accumulation period
+      accumulation_period <- df_i %>%
+        filter(date >= start_date & date <= date_i)
+      
+      # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
+      accumulation_sums[i] <- sum(accumulation_period$HSNAP)
+      
+    } else {
+      
+      # If most_recent_summer is "-Inf," set the accumulation sum to NA
+      accumulation_sums[i] <- NA
       
     }
-    
-    for (i in unique(ts$event_id)) {
-      x <- hs(i)
-      y <- c(event_id = i, HS = x)
-      assign(paste0("HS_", i), as.data.frame(t(y)))
-    }
-    
-    hs_list <- mget(ls(pattern = "HS_"))
-    hs.climatology <- bind_rows(hs_list)
-    hs.summary <- merge(ts, hs.climatology, by = "event_id")
-    (hs.summary$HS)
-    
   }
   
-  df_i$HSNAP_cml = compute.snap(df_i$date, df_i$HSNAP)
+  # Add the accumulation sums to the dataframe
+  df_i$HSNAP_accumulation <- accumulation_sums
+  
+  # Convert accumulation sum to per week
+  df_i <- df_i %>%
+    mutate(unique_week_id = as.numeric(format(date, "%U")) + (year(date) - min(year(date))) * 52) %>% 
+    group_by(unique_week_id) %>% 
+    mutate(HSNAP_accumulation_per_week = mean(HSNAP_accumulation, na.rm = T))
+  
   colnames(df_i)[2] <- "SST"
-  df2 <- dplyr::select(df_i, date, SST, climatology, sd, SSTA, HSNAP, HSNAP_cml)
+  
+  df2 <- dplyr::select(df_i, date, SST, climatology, sd, SSTA, HSNAP, HSNAP_accumulation, HSNAP_accumulation_per_week)
   write_csv(df2, file = "output/jarvis_hotsnap_ts.csv")
 }
 
@@ -243,9 +256,9 @@ plot.dhw = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, h
 
 plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, height = 4) {
   
-  # df = snap
-  # start = NULL
-  # end = NULL
+  df = snap
+  start = NULL
+  end = NULL
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -271,20 +284,19 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
     ungroup() %>%
     filter(date >= ifelse(is.null(start), first(date), start) & date <= ifelse(is.null(start), last(date), end))
   
-  sst.offset <- max(df_i$SST)/max(df_i$HSNAP_cml)
-  sec.axis.offset <- max(df_i$HSNAP_cml)/max(df_i$SST)
+  sst.offset <- max(df_i$SST)/max(df_i$HSNAP_accumulation)
+  sec.axis.offset <- max(df_i$HSNAP_accumulation_per_week)/max(df_i$SST)
   
   p <- ggplot(df_i) + 
     geom_line(aes(x = date, y = SST), color = "blue") + 
     geom_point(aes(x = date, y = climatology), color = "black", size = 0.1) + 
     geom_hline(yintercept = df$climatology + df$sd, color = "blue", lty = 3) + 
     geom_hline(yintercept = df$climatology, color = "blue", lty = 2) +
-    geom_line(aes(x = date, y = HSNAP_cml * sst.offset), color = "red") +
-    # geom_hline(yintercept = 4 * sst.offset, color = "red", lty = 2, size = 0.25) + 
-    # geom_hline(yintercept = 8 * sst.offset, color = "red", lty = 3) +
+    geom_line(aes(x = date, y = HSNAP_accumulation_per_week * sst.offset), color = "red") +
     xlab(expression("Date")) + 
     ylab(expression(SST ~ (degree ~ C))) +
-    scale_y_continuous(sec.axis = sec_axis(~. * sec.axis.offset, name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks)))) +
+    # scale_y_continuous(sec.axis = sec_axis(~. * sec.axis.offset, name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks)))) +
+    scale_y_continuous(sec.axis = sec_axis(~., name = expression(Hot_Snap_accumulation ~ (degree ~ C ~ "per" ~ week)))) +
     scale_x_date(date_breaks = "2 years", date_labels = "%Y", "") +
     theme_classic() +
     theme(axis.ticks.y.right = element_line(color = "red"),
