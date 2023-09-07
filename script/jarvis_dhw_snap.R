@@ -26,16 +26,16 @@ sst <- stack(sst_source) %>%
 
 sst_i = sst %>% 
   slice(-c(1, 2)) %>% 
-  # filter(year %in% c(2014:2018)) %>%
-  filter(year %in% c(1985:2018)) %>%
+  filter(year %in% c(2014:2018)) %>%
+  # filter(year %in% c(1985:2018)) %>%
   select(year, month, day, starts_with("V")) %>% 
   mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE),
          date = as.Date(paste(year, month, day, sep = "-"), format = "%Y-%m-%d"),
          sst = V) %>% 
   select(year, month, day, date, sst)
 
-dhw = compute.dhw(x = sst_i$date, sst_i$sst, z = "week"); plot.dhw(test)
-dhw = compute.dhw(x = sst_i$date, sst_i$sst, z = "month"); plot.dhw(test)
+dhw = compute.dhw(x = sst_i$date, sst_i$sst, z = "week"); plot.dhw(dhw)
+dhw = compute.dhw(x = sst_i$date, sst_i$sst, z = "month"); plot.dhw(dhw)
 snap = compute.snap(x = sst_i$date, sst_i$sst, z = "week"); plot.snap(snap)
 snap = compute.snap(x = sst_i$date, sst_i$sst, z = "month"); plot.snap(snap)
 

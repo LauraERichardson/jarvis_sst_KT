@@ -137,33 +137,30 @@ compute.snap = function (x, y, z = "week") {
   df_i$sd = warmest_months$sd
   
   df_i$SSTA = df_i$estimate - df_i$climatology
-  df_i$TSA = df_i$estimate - max(df_i$climatology)
-  df_i$TSA = ifelse(df_i$TSA > 0, df_i$TSA, 0)
   df_i$HSNAP = df_i$estimate - (df_i$climatology + df_i$sd)
-  # df_i$HSNAP = ifelse(df_i$HSNAP > 0, df_i$HSNAP, 0)
-  
-  compute.dhw.snap <- function(x, y) {
+
+  compute.snap <- function(x, y) {
     
     x = df_i$date
     y = df_i$HSNAP
     
-    dhw.ts <- as.data.frame(x)
-    dhw.ts$event_id <- seq(1, length(dhw.ts$x))
-    colnames(dhw.ts)[1] <- c("date")
-    dhw.ts$week <- week(dhw.ts$date)
-    dhw.ts$year <- year(dhw.ts$date)
-    dhw.ts$TSA <- y
-    dhw.ts$tsa_dhw <- ifelse(dhw.ts$TSA >= 0, dhw.ts$TSA, 0)
+    ts <- as.data.frame(x)
+    ts$event_id <- seq(1, length(ts$x))
+    colnames(ts)[1] <- c("date")
+    ts$week <- week(ts$date)
+    ts$year <- year(ts$date)
+    ts$hs <- y
+    ts$tsa_hs <- ifelse(ts$hs >= 0, ts$hs, 0)
     
     nz <- ifelse(z == "month", 89, ifelse(z == "week", 11, "NA"))
     
     dhw <- function(event_id) {
       
-      sum(dhw.ts$tsa_dhw[dhw.ts$event_id >= event_id - nz & dhw.ts$event_id <= event_id])
+      sum(ts$tsa_hs[ts$event_id >= event_id - nz & ts$event_id <= event_id])
       
     }
     
-    for (i in unique(dhw.ts$event_id)) {
+    for (i in unique(ts$event_id)) {
       x <- dhw(i)
       y <- c(event_id = i, DHW = x)
       assign(paste0("DHW_", i), as.data.frame(t(y)))
@@ -171,14 +168,14 @@ compute.snap = function (x, y, z = "week") {
     
     dhw_list <- mget(ls(pattern = "DHW_"))
     dhw.climatology <- bind_rows(dhw_list)
-    dhw.summary <- merge(dhw.ts, dhw.climatology, by = "event_id")
+    dhw.summary <- merge(ts, dhw.climatology, by = "event_id")
     (dhw.summary$DHW)
     
   }
   
-  df_i$HSNAP_cml = compute.dhw.snap(df_i$date, df_i$HSNAP)
+  df_i$HSNAP_cml = compute.snap(df_i$date, df_i$HSNAP)
   colnames(df_i)[2] <- "SST"
-  df2 <- dplyr::select(df_i, date, SST, climatology, sd, SSTA, TSA, HSNAP, HSNAP_cml)
+  df2 <- dplyr::select(df_i, date, SST, climatology, sd, SSTA, HSNAP, HSNAP_cml)
   write_csv(df2, file = "output/jarvis_hotsnap_ts.csv")
 }
 
