@@ -138,13 +138,22 @@ compute.snap = function (x, y) {
   # Add the accumulation sums to the dataframe
   df$HSNAP_accumulation <- accumulation_sums
   
+  colnames(df)[2] <- "SST"
+  
   # Convert accumulation sum to per week
   df <- df %>%
     mutate(unique_week_id = as.numeric(format(date, "%U")) + (year(date) - min(year(date))) * 52) %>% 
     group_by(unique_week_id) %>% 
-    mutate(HSNAP_accumulation_per_week = mean(HSNAP_accumulation, na.rm = T))
+    mutate(HSNAP_accumulation_per_week = mean(HSNAP_accumulation, na.rm = T)) %>% 
+    ungroup()
   
-  colnames(df)[2] <- "SST"
+  df = df %>% dplyr::select(date, SST, SSTA, HSNAP_accumulation, HSNAP_accumulation_per_week)
+  
+  sv = readr::read_csv("data/2010-2018 Jarvis site info for KiseiTanaka.csv")
+  sv$date = mdy(sv$DATE_)
+  sv = sv %>% dplyr::select(date, SITEVISITID, SITE, ISLAND)
+  
+  df = right_join(sv, df)
   
   write_csv(df, file = "output/jarvis_hotsnap_ts.csv")
   
@@ -185,7 +194,7 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
   
   p <- ggplot(df_i) + 
     geom_line(aes(x = date, y = SST), color = "blue") + 
-    geom_point(aes(x = date, y = climatology), color = "black", size = 0.1) + 
+    geom_point(aes(x = date, y = climatology), color = "black", size = 0.5) + 
     geom_hline(yintercept = df$climatology + df$sd, color = "blue", lty = 3) + 
     geom_hline(yintercept = df$climatology, color = "blue", lty = 2) +
     geom_line(aes(x = date, y = HSNAP_accumulation_per_week * sst.offset), color = "red") +
