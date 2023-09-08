@@ -20,8 +20,8 @@ compute.snap = function (x, y) {
   
   # mean and sd from three warmest months
   warmest_months <- df %>%
-    mutate(date = as.Date(date), month = format(date, "%m"), 
-           month = month.name[as.numeric(format(date, "%m"))]) %>% 
+    mutate(date = as.Date(date), month = format(date, "%m")) %>% 
+    # muatte(month = month.name[as.numeric(format(date, "%m"))]) %>% 
     group_by(month) %>%
     summarise(climatology = mean(estimate), sd = sd(estimate)) %>%
     arrange(desc(climatology)) %>%
@@ -29,11 +29,12 @@ compute.snap = function (x, y) {
     print()
   
   summer_months = warmest_months$month
+  summer_months <- summer_months[order(as.integer(summer_months))]
   
   # mean and sd from three coldest months
   coldest_months <- df %>%
-    mutate(date = as.Date(date), month = format(date, "%m"), 
-           month = month.name[as.numeric(format(date, "%m"))]) %>% 
+    mutate(date = as.Date(date), month = format(date, "%m")) %>% 
+    # muatte(month = month.name[as.numeric(format(date, "%m"))]) %>% 
     group_by(month) %>%
     summarise(climatology = mean(estimate), sd = sd(estimate)) %>%
     arrange(desc(climatology)) %>%
@@ -41,6 +42,7 @@ compute.snap = function (x, y) {
     print()
   
   winter_months = coldest_months$month
+  winter_months <- winter_months[order(as.integer(winter_months))]
   
   # mean and sd across three warmest months
   warmest_months = df %>%
@@ -63,33 +65,33 @@ compute.snap = function (x, y) {
     summarise(climatology = mean(climatology), sd = mean(sd)) %>%
     print()
   
-  df_i$climatology = warmest_months$climatology
-  df_i$sd = warmest_months$sd
+  df$climatology = warmest_months$climatology
+  df$sd = warmest_months$sd
   
-  df_i$SSTA = df_i$estimate - df_i$climatology
-  df_i$HSNAP = df_i$estimate - (df_i$climatology + df_i$sd)
-  df_i$HSNAP = ifelse(df_i$HSNAP >= 0, df_i$HSNAP, 0)
+  df$SSTA = df$estimate - df$climatology
+  df$HSNAP = df$estimate - (df$climatology + df$sd)
+  df$HSNAP = ifelse(df$HSNAP >= 0, df$HSNAP, 0)
   
   # Convert 'date' column to Date type
-  df_i$date <- as.Date(df_i$date)
+  df$date <- as.Date(df$date)
   
   # Initialize an empty vector to store accumulation sums
-  accumulation_sums <- numeric(nrow(df_i))
+  accumulation_sums <- numeric(nrow(df))
   
   # Iterate through the dates using a for loop
-  for (i in 1:nrow(df_i)) {
+  for (i in 1:nrow(df)) {
     
-    # i = 1000
+    # i = sample(1:10000, 1)
     
-    date_i <- df_i$date[i]; print(date_i)
+    date_i <- df$date[i]; print(date_i)
     
     # Find the beginning of most recent summer
-    # most_recent_summer <- max(df_i$date[df_i$date < date_i & months(df_i$date) %in% summer_months]); most_recent_summer
-    most_recent_summer <- df_i %>%
-      filter(date >= date_i - days(365)) %>%
-      mutate(summer_month = months(date) %in% summer_months) %>%
-      filter(summer_month) %>%
-      summarise(most_recent_summer = min(date)); most_recent_summer
+    most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
+    
+    # If date_i is before the most recent summer, subtract one year
+    if (date_i < most_recent_summer)  most_recent_summer <- most_recent_summer - years(1)
+    
+    most_recent_summer
     
     # Check if the most recent summer is not missing ("-Inf")
     if (!is.infinite(most_recent_summer)) {
@@ -98,7 +100,7 @@ compute.snap = function (x, y) {
       start_date <- most_recent_summer - months(3)
       
       # Filter the dataframe for dates within the accumulation period
-      accumulation_period <- df_i %>%
+      accumulation_period <- df %>%
         filter(date >= start_date & date <= date_i)
       
       # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
@@ -113,18 +115,17 @@ compute.snap = function (x, y) {
   }
   
   # Add the accumulation sums to the dataframe
-  df_i$HSNAP_accumulation <- accumulation_sums
+  df$HSNAP_accumulation <- accumulation_sums
   
   # Convert accumulation sum to per week
-  df_i <- df_i %>%
+  df <- df %>%
     mutate(unique_week_id = as.numeric(format(date, "%U")) + (year(date) - min(year(date))) * 52) %>% 
     group_by(unique_week_id) %>% 
     mutate(HSNAP_accumulation_per_week = mean(HSNAP_accumulation, na.rm = T))
   
-  colnames(df_i)[2] <- "SST"
+  colnames(df)[2] <- "SST"
   
-  df2 <- dplyr::select(df_i, date, SST, climatology, sd, SSTA, HSNAP, HSNAP_accumulation, HSNAP_accumulation_per_week)
-  write_csv(df2, file = "output/jarvis_hotsnap_ts.csv")
+  write_csv(df, file = "output/jarvis_hotsnap_ts.csv")
   
 }
 
