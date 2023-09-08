@@ -2,7 +2,7 @@ compute.snap = function (x, y) {
   
   x = sst_i$date
   y = sst_i$sst
-
+  
   if (!require(tidyverse)) {
     install.packages("tidyverse")
     library(tidyverse)
@@ -14,6 +14,10 @@ compute.snap = function (x, y) {
   if (!require(lubridate)) {
     install.packages("lubridate")
     library(lubridate)
+  }
+  if (!require(lubridate)) {
+    install.packages("progress")
+    library(progress)
   }
   
   df <- as.data.frame(list(date = x, estimate = na_interpolation(y)))
@@ -44,7 +48,7 @@ compute.snap = function (x, y) {
   winter_months = coldest_months$month
   winter_months <- winter_months[order(as.integer(winter_months))]
   
-  # mean and sd across three warmest months
+  # mean and sd across three warmest and coldest months (i.e., summer and winter months)
   warmest_months = df %>%
     mutate(date = as.Date(date), month = format(date, "%m")) %>%
     group_by(month) %>%
@@ -65,11 +69,18 @@ compute.snap = function (x, y) {
     summarise(climatology = mean(climatology), sd = mean(sd)) %>%
     print()
   
+  # Assign summer mean temperature mean and sd from warmest_months
   df$climatology = warmest_months$climatology
   df$sd = warmest_months$sd
   
+  # Calculate SST Anomaly (SSTA)
   df$SSTA = df$estimate - df$climatology
+  
+  # Calculate Hot Snaps, which occur when the temperature exceeds the baseline.
+  # The baseline for Hot Snaps is defined as one standard deviation above the summer mean.
   df$HSNAP = df$estimate - (df$climatology + df$sd)
+  
+  # Ensure that HSNAP values are non-negative (set negative values to 0)
   df$HSNAP = ifelse(df$HSNAP >= 0, df$HSNAP, 0)
   
   # Convert 'date' column to Date type
@@ -78,12 +89,20 @@ compute.snap = function (x, y) {
   # Initialize an empty vector to store accumulation sums
   accumulation_sums <- numeric(nrow(df))
   
-  # Iterate through the dates using a for loop
+  # Here we calcuate accumulated Hotsnap. 
+  # "The period of accumulation included dates from three months before the most-recent summer that preceded each survey, through to the date of the survey. We accumulated temperatures exceeding the summer baseline during this period, including values outside the climatologically warmest months to incorporate any extra-seasonal warming."
+  
+  pb <- progress_bar$new(total = nrow(df))
+  
+  # Iterate through the dates
   for (i in 1:nrow(df)) {
+    
+    pb$tick()
     
     # i = sample(1:10000, 1)
     
-    date_i <- df$date[i]; print(date_i)
+    date_i <- df$date[i]
+    # print(date_i)
     
     # Find the beginning of most recent summer
     most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
@@ -113,6 +132,8 @@ compute.snap = function (x, y) {
       
     }
   }
+  
+  pb$terminate()
   
   # Add the accumulation sums to the dataframe
   df$HSNAP_accumulation <- accumulation_sums
