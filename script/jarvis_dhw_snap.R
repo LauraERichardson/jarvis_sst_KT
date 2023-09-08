@@ -38,6 +38,6 @@ sst_i = sst %>%
 snap = compute.snap(x = sst_i$date, sst_i$sst)
 
 # Plot SST and Hot Snap time series
-plot.snap(snap)
+plot.snap(snap, var = "snap")
+plot.snap(snap, var = "snapsum")
 
-ggsave(last_plot(), filename = "output/jarvis_hotsnap_ts.png", height = 8, width = 16)

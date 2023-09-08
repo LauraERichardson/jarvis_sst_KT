@@ -147,19 +147,19 @@ compute.snap = function (x, y) {
     mutate(HSNAP_accumulation_per_week = mean(HSNAP_accumulation, na.rm = T)) %>% 
     ungroup()
   
-  df = df %>% dplyr::select(date, SST, SSTA, HSNAP_accumulation, HSNAP_accumulation_per_week)
+  df = df %>% dplyr::select(date, SST, SSTA, climatology, sd, HSNAP, HSNAP_accumulation, HSNAP_accumulation_per_week)
   
   sv = readr::read_csv("data/2010-2018 Jarvis site info for KiseiTanaka.csv")
   sv$date = mdy(sv$DATE_)
   sv = sv %>% dplyr::select(date, SITEVISITID, SITE, ISLAND)
   
-  df = right_join(sv, df)
+  df = full_join(sv, df)
   
   write_csv(df, file = "output/jarvis_hotsnap_ts.csv")
   
 }
 
-plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, height = 4) {
+plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, height = 4, var = "snap") {
   
   df = snap
   start = NULL
@@ -182,26 +182,47 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
     library(ggthemes)
   }
   
-  df_i <- na.omit(df) %>% 
+  df_i <- df %>% 
+    # na.omit() %>% 
     group_by(week = week(date)) %>%
     mutate(climatology = mean(SST),
            sd = sd(SST)) %>% 
-    ungroup() %>%
-    filter(date >= ifelse(is.null(start), first(date), start) & date <= ifelse(is.null(start), last(date), end))
+    # filter(date >= ifelse(is.null(start), first(date), start) & 
+    #          date <= ifelse(is.null(start), last(date), end)) %>%
+    ungroup() 
   
-  sst.offset <- max(df_i$SST)/max(df_i$HSNAP_accumulation)
-  sec.axis.offset <- max(df_i$HSNAP_accumulation_per_week)/max(df_i$SST)
+  if (var == "snap") {
+    
+    sst.offset <- max(df_i$SST)/max(df_i$HSNAP)
+    sec.axis.offset <- max(df_i$HSNAP)/max(df_i$SST)
+    
+    df_i$var = df$HSNAP
+    
+    xlab_name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks))
+    
+  }
+  
+  if (var == "snapsum") {
+    
+    sst.offset <- max(df_i$SST)/max(df_i$HSNAP_accumulation)
+    sec.axis.offset <- max(df_i$HSNAP_accumulation_per_week)/max(df_i$SST)
+    
+    df_i$var = df$HSNAP_accumulation_per_week
+    
+    xlab_name = expression(Hot_Snap_accumulation ~ (degree ~ C ~ "-" ~ weeks))
+    
+  }
   
   p <- ggplot(df_i) + 
     geom_line(aes(x = date, y = SST), color = "blue") + 
     geom_point(aes(x = date, y = climatology), color = "black", size = 0.5) + 
     geom_hline(yintercept = df$climatology + df$sd, color = "blue", lty = 3) + 
     geom_hline(yintercept = df$climatology, color = "blue", lty = 2) +
-    geom_line(aes(x = date, y = HSNAP_accumulation_per_week * sst.offset), color = "red") +
+    geom_line(aes(x = date, y = var * sst.offset), color = "red") +
     xlab(expression("Date")) + 
     ylab(expression(SST ~ (degree ~ C))) +
     # scale_y_continuous(sec.axis = sec_axis(~. * sec.axis.offset, name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks)))) +
-    scale_y_continuous(sec.axis = sec_axis(~., name = expression(Hot_Snap_accumulation ~ (degree ~ C ~ "per" ~ week)))) +
+    scale_y_continuous(sec.axis = sec_axis(~., name = xlab_name)) +
     scale_x_date(date_breaks = "2 years", date_labels = "%Y", "") +
     theme_classic() +
     theme(axis.ticks.y.right = element_line(color = "red"),
@@ -224,4 +245,8 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
   })
   
   print(p)
+  
+  if (var == "snap") ggsave(last_plot(), filename = "output/jarvis_snap_ts.png", height = 8, width = 16)
+  if (var == "snapsum") ggsave(last_plot(), filename = "output/jarvis_snapsum_ts.png", height = 8, width = 16)
+
 }
