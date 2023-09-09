@@ -312,6 +312,6 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 4, 
   
   print(p1/p2)
   
-ggsave(last_plot(), filename = "output/jarvis_snap_ts.png", height = 8, width = 12)
+ggsave(last_plot(), filename = "output/jarvis_snap_ts.png", height = 8, width = 9)
 
 }
