@@ -1,5 +1,4 @@
 library(dplyr)
-library(THE)
 library(raster)
 
 rm(list = ls())
@@ -27,17 +26,16 @@ sst <- stack(sst_source) %>%
 # Subset SST data (e.g., 1985-2018)
 sst_i = sst %>% 
   slice(-c(1, 2)) %>% 
-  filter(year %in% 1985:2018) %>%
+  filter(year %in% 2014:2018) %>%
   select(year, month, day, starts_with("V")) %>% 
   mutate(V = rowMeans(select(., starts_with("V")), na.rm = TRUE),
          date = as.Date(paste(year, month, day, sep = "-"), format = "%Y-%m-%d"),
          sst = V) %>% 
   select(year, month, day, date, sst)
 
-# Calculate HotSnap (doi.org/10.1371/journal.pone.0012210)
+# Calculate Hot & Cold Snaps (doi.org/10.1371/journal.pone.0012210)
 snap = compute.snap(x = sst_i$date, sst_i$sst)
 
-# Plot SST and Hot Snap time series
-plot.snap(snap, var = "snap")
-plot.snap(snap, var = "snapsum")
+# Plot SST and Snap time series
+plot.snap(snap)
 

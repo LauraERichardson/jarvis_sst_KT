@@ -1,7 +1,7 @@
 compute.snap = function (x, y) {
   
-  # x = sst_i$date
-  # y = sst_i$sst
+  x = sst_i$date
+  y = sst_i$sst
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -216,7 +216,7 @@ compute.snap = function (x, y) {
   sv$date = mdy(sv$DATE_)
   sv = sv %>% dplyr::select(date, SITEVISITID, SITE, ISLAND)
   
-  df = full_join(sv, df)
+  df = merge(sv, df, all = T)
   
   write_csv(df, file = "output/jarvis_hot_cold_snaps_ts.csv")
   
@@ -310,8 +310,8 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 4, 
     print.plot(destfile, width, height)
   })
   
+  png(filename = "output/jarvis_snap_ts.png", height = 8, width = 9, units = "in", res = 300)
   print(p1/p2)
+  dev.off()
   
-ggsave(last_plot(), filename = "output/jarvis_snap_ts.png", height = 8, width = 9)
-
 }
