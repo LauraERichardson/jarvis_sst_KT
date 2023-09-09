@@ -1,7 +1,7 @@
 compute.snap = function (x, y) {
   
-  x = sst_i$date
-  y = sst_i$sst
+  # x = sst_i$date
+  # y = sst_i$sst
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -15,7 +15,7 @@ compute.snap = function (x, y) {
     install.packages("lubridate")
     library(lubridate)
   }
-  if (!require(lubridate)) {
+  if (!require(progress)) {
     install.packages("progress")
     library(progress)
   }
@@ -69,30 +69,33 @@ compute.snap = function (x, y) {
     summarise(climatology = mean(climatology), sd = mean(sd)) %>%
     print()
   
-  # Assign summer mean temperature mean and sd from warmest_months
-  df$climatology = warmest_months$climatology
-  df$sd = warmest_months$sd
+  # #1 Calculate Hot Snaps (temperature exceeds baseline)
+  # Baseline: One standard deviation above the summer mean
+  df$summer_mean = warmest_months$climatology
+  df$summer_sd = warmest_months$sd
+  df$hot_snap = df$estimate - (df$summer_mean + df$summer_sd)
+  df$hot_snap = ifelse(df$hot_snap >= 0, df$hot_snap, 0) # Ensure non-negative values
   
-  # Calculate SST Anomaly (SSTA)
-  df$SSTA = df$estimate - df$climatology
-  
-  # Calculate Hot Snaps, which occur when the temperature exceeds the baseline.
-  # The baseline for Hot Snaps is defined as one standard deviation above the summer mean.
-  df$HSNAP = df$estimate - (df$climatology + df$sd)
-  
-  # Ensure that HSNAP values are non-negative (set negative values to 0)
-  df$HSNAP = ifelse(df$HSNAP >= 0, df$HSNAP, 0)
+  # #2 Calculate Cold Snaps (temperature drops below baseline)
+  # Baseline: Winter mean less one winter standard deviation
+  df$winter_mean = coldest_months$climatology
+  df$winter_sd = coldest_months$sd
+  df$cold_snap = df$estimate - (df$winter_mean - df$winter_sd)
+  df$cold_snap = ifelse(df$cold_snap <= 0, df$cold_snap, 0)  # Ensure negative or zero values
   
   # Convert 'date' column to Date type
   df$date <- as.Date(df$date)
   
+  ########################################
+  #### Calculate accumulated hot snap ####
+  ########################################
+  
   # Initialize an empty vector to store accumulation sums
   accumulation_sums <- numeric(nrow(df))
   
-  # Here we calcuate accumulated Hotsnap. 
-  # "The period of accumulation included dates from three months before the most-recent summer that preceded each survey, through to the date of the survey. We accumulated temperatures exceeding the summer baseline during this period, including values outside the climatologically warmest months to incorporate any extra-seasonal warming."
-  
   pb <- progress_bar$new(total = nrow(df))
+  
+  print("Calculating Hot Snap through period of accumulation...")
   
   # Iterate through the dates
   for (i in 1:nrow(df)) {
@@ -107,7 +110,7 @@ compute.snap = function (x, y) {
     # Find the beginning of most recent summer
     most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
     
-    # If date_i is before the most recent summer, subtract one year
+    # If date_i is before summer, subtract one year for the most recent summer
     if (date_i < most_recent_summer)  most_recent_summer <- most_recent_summer - years(1)
     
     most_recent_summer
@@ -115,7 +118,8 @@ compute.snap = function (x, y) {
     # Check if the most recent summer is not missing ("-Inf")
     if (!is.infinite(most_recent_summer)) {
       
-      # Calculate the start date of the accumulation period (three months before the most recent summer)
+      # Calculate the start date of the accumulation period
+      # hotsnap = three months before the most recent summer
       start_date <- most_recent_summer - months(3)
       
       # Filter the dataframe for dates within the accumulation period
@@ -123,7 +127,7 @@ compute.snap = function (x, y) {
         filter(date >= start_date & date <= date_i)
       
       # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
-      accumulation_sums[i] <- sum(accumulation_period$HSNAP)
+      accumulation_sums[i] <- sum(accumulation_period$hot_snap)
       
     } else {
       
@@ -135,19 +139,78 @@ compute.snap = function (x, y) {
   
   pb$terminate()
   
-  # Add the accumulation sums to the dataframe
-  df$HSNAP_accumulation <- accumulation_sums
+  df$accumulated_hot_snap <- accumulation_sums
   
-  colnames(df)[2] <- "SST"
+  #########################################
+  #### Calculate accumulated cold snap ####
+  #########################################
+  
+  # Initialize an empty vector to store accumulation sums
+  accumulation_sums <- numeric(nrow(df))
+  
+  pb <- progress_bar$new(total = nrow(df))
+  
+  print("Calculating Cold Snap through period of accumulation...")
+  
+  # Iterate through the dates
+  for (i in 1:nrow(df)) {
+    
+    pb$tick()
+    
+    # i = sample(1:10000, 1)
+    
+    date_i <- df$date[i]
+    # print(date_i)
+    
+    # Find the beginning of most recent summer
+    most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
+    
+    # If date_i is before summer, subtract one year for the most recent summer
+    if (date_i < most_recent_summer)  most_recent_summer <- most_recent_summer - years(1)
+    
+    most_recent_summer
+    
+    # Check if the most recent summer is not missing ("-Inf")
+    if (!is.infinite(most_recent_summer)) {
+      
+      # Calculate the start date of the accumulation period
+      # coldsnap = nine months before the most recent summer
+      start_date <- most_recent_summer - months(9)
+      
+      # Filter the dataframe for dates within the accumulation period
+      accumulation_period <- df %>%
+        filter(date >= start_date & date <= date_i)
+      
+      # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
+      accumulation_sums[i] <- sum(accumulation_period$cold_snap)
+      
+    } else {
+      
+      # If most_recent_summer is "-Inf," set the accumulation sum to NA
+      accumulation_sums[i] <- NA
+      
+    }
+  }
+  
+  pb$terminate()
+  
+  df$accumulated_cold_snap <- accumulation_sums
+  
+  colnames(df)[2] <- "sst"
   
   # Convert accumulation sum to per week
   df <- df %>%
     mutate(unique_week_id = as.numeric(format(date, "%U")) + (year(date) - min(year(date))) * 52) %>% 
     group_by(unique_week_id) %>% 
-    mutate(HSNAP_accumulation_per_week = mean(HSNAP_accumulation, na.rm = T)) %>% 
+    mutate(accumulated_hot_snap_week = mean(accumulated_hot_snap, na.rm = T),
+           accumulated_cold_snap_week = mean(accumulated_cold_snap, na.rm = T),) %>% 
     ungroup()
   
-  df = df %>% dplyr::select(date, SST, SSTA, climatology, sd, HSNAP, HSNAP_accumulation, HSNAP_accumulation_per_week)
+  df = df %>% 
+    dplyr::select(date, sst, summer_mean, winter_mean, summer_sd, winter_sd, 
+                  hot_snap, cold_snap, 
+                  accumulated_hot_snap, accumulated_cold_snap,
+                  accumulated_hot_snap_week, accumulated_cold_snap_week)
   
   sv = readr::read_csv("data/2010-2018 Jarvis site info for KiseiTanaka.csv")
   sv$date = mdy(sv$DATE_)
@@ -155,7 +218,7 @@ compute.snap = function (x, y) {
   
   df = full_join(sv, df)
   
-  write_csv(df, file = "output/jarvis_hotsnap_ts.csv")
+  write_csv(df, file = "output/jarvis_hot_cold_snaps_ts.csv")
   
 }
 
@@ -248,5 +311,5 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
   
   if (var == "snap") ggsave(last_plot(), filename = "output/jarvis_snap_ts.png", height = 8, width = 16)
   if (var == "snapsum") ggsave(last_plot(), filename = "output/jarvis_snapsum_ts.png", height = 8, width = 16)
-
+  
 }
