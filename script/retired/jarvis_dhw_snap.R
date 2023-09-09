@@ -38,6 +38,6 @@ sst_i = sst %>%
 snap = compute.snap(x = sst_i$date, sst_i$sst)
 
 # Plot SST and Hot Snap time series
-plot.snap(snap, var = "snap")
+plot.hot.snap(snap, var = "snap")
 plot.snap(snap, var = "snapsum")
 

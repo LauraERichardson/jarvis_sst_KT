@@ -222,11 +222,11 @@ compute.snap = function (x, y) {
   
 }
 
-plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, height = 4, var = "snap") {
+plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 4, height = 3) {
   
-  df = snap
-  start = NULL
-  end = NULL
+  # df = snap
+  # start = NULL
+  # end = NULL
   
   if (!require(tidyverse)) {
     install.packages("tidyverse")
@@ -244,62 +244,65 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
     install.packages("ggthemes")
     library(ggthemes)
   }
+  if (!require(patchwork)) {
+    install.packages("patchwork")
+    library(patchwork)
+  }
   
   df_i <- df %>% 
-    # na.omit() %>% 
+    # na.omit() %>%
     group_by(week = week(date)) %>%
-    mutate(climatology = mean(SST),
-           sd = sd(SST)) %>% 
+    mutate(climatology = mean(sst),
+           sd = sd(sst)) %>% 
     # filter(date >= ifelse(is.null(start), first(date), start) & 
     #          date <= ifelse(is.null(start), last(date), end)) %>%
-    ungroup() 
+    ungroup()
   
-  if (var == "snap") {
-    
-    sst.offset <- max(df_i$SST)/max(df_i$HSNAP)
-    sec.axis.offset <- max(df_i$HSNAP)/max(df_i$SST)
-    
-    df_i$var = df$HSNAP
-    
-    xlab_name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks))
-    
-  }
-  
-  if (var == "snapsum") {
-    
-    sst.offset <- max(df_i$SST)/max(df_i$HSNAP_accumulation)
-    sec.axis.offset <- max(df_i$HSNAP_accumulation_per_week)/max(df_i$SST)
-    
-    df_i$var = df$HSNAP_accumulation_per_week
-    
-    xlab_name = expression(Hot_Snap_accumulation ~ (degree ~ C ~ "-" ~ weeks))
-    
-  }
-  
-  p <- ggplot(df_i) + 
-    geom_line(aes(x = date, y = SST), color = "blue") + 
-    geom_point(aes(x = date, y = climatology), color = "black", size = 0.5) + 
-    geom_hline(yintercept = df$climatology + df$sd, color = "blue", lty = 3) + 
-    geom_hline(yintercept = df$climatology, color = "blue", lty = 2) +
-    geom_line(aes(x = date, y = var * sst.offset), color = "red") +
+  sst.offset_h1 <- max(df_i$sst)/max(df_i$hot_snap)
+  sst.offset_h2 <- max(df_i$sst)/max(df_i$accumulated_hot_snap_week)
+ 
+  p1 <- ggplot(df_i) + 
+    geom_line(aes(x = date, y = sst), alpha = 0.5) +  
+    geom_point(aes(x = date, y = climatology), size = 0.5) + 
+    geom_hline(yintercept = df$summer_mean + df$summer_sd, lty = 3) + 
+    geom_hline(yintercept = df$summer_mean, lty = 2) +
+    geom_point(data = subset(df_i, hot_snap > 0), 
+               aes(x = date, y = hot_snap * sst.offset_h1), color = "red", alpha = 0.1) +
+    geom_line(aes(x = date, y = accumulated_hot_snap_week * sst.offset_h2), color = "red") +
     xlab(expression("Date")) + 
     ylab(expression(SST ~ (degree ~ C))) +
-    # scale_y_continuous(sec.axis = sec_axis(~. * sec.axis.offset, name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks)))) +
-    scale_y_continuous(sec.axis = sec_axis(~., name = xlab_name)) +
+    scale_y_continuous(sec.axis = sec_axis(~., name = expression(Hot_Snap ~ (degree ~ C ~ "-" ~ weeks)))) +
     scale_x_date(date_breaks = "2 years", date_labels = "%Y", "") +
     theme_classic() +
     theme(axis.ticks.y.right = element_line(color = "red"),
           axis.text.y.right = element_text(color = "red"),
-          axis.title.y.right = element_text(color = "red")) +
-    theme(axis.ticks.y.left = element_line(color = "blue"),
-          axis.text.y.left = element_text(color = "blue"),
-          axis.title.y.left = element_text(color = "blue")) +
-    theme(axis.line.y.right = element_line(color = "red"),
-          axis.line.y.left = element_line(color = "blue"))
+          axis.title.y.right = element_text(color = "red"), 
+          axis.line.y.right = element_line(color = "red"))
   
+  sst.offset_c1 <- min(df_i$sst)/min(df_i$cold_snap)
+  sst.offset_c2 <- min(df_i$sst)/min(df_i$accumulated_cold_snap_week)
+  
+  p2 <- ggplot(df_i) + 
+    geom_line(aes(x = date, y = sst), alpha = 0.5) +  
+    geom_point(aes(x = date, y = climatology), size = 0.5) + 
+    geom_hline(yintercept = df$winter_mean - df$winter_sd, lty = 3) + 
+    geom_hline(yintercept = df$winter_mean, lty = 2) +
+    geom_point(data = subset(df_i, cold_snap < 0), 
+               aes(x = date, y = cold_snap * sst.offset_c1), color = "blue", alpha = 0.1) +
+    geom_line(aes(x = date, y = accumulated_cold_snap_week * sst.offset_c2), color = "blue") +
+    xlab(expression("Date")) + 
+    ylab(expression(SST ~ (degree ~ C))) +
+    scale_y_continuous(sec.axis = sec_axis(~., name = expression(Cold_Snap ~ (degree ~ C ~ "-" ~ weeks)))) +
+    scale_x_date(date_breaks = "2 years", date_labels = "%Y", "") +
+    theme_classic() +
+    theme(axis.ticks.y.right = element_line(color = "blue"),
+          axis.text.y.right = element_text(color = "blue"),
+          axis.title.y.right = element_text(color = "blue"), 
+          axis.line.y.right = element_line(color = "blue"))
+ 
   print.plot <- function(destfile, width, height) {
     pdf(destfile, width, height)
-    print(p)
+    print(p1/p2)
     graphics.off()
   }
   
@@ -307,9 +310,8 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 8, 
     print.plot(destfile, width, height)
   })
   
-  print(p)
+  print(p1/p2)
   
-  if (var == "snap") ggsave(last_plot(), filename = "output/jarvis_snap_ts.png", height = 8, width = 16)
-  if (var == "snapsum") ggsave(last_plot(), filename = "output/jarvis_snapsum_ts.png", height = 8, width = 16)
-  
+ggsave(last_plot(), filename = "output/jarvis_snap_ts.png", height = 8, width = 12)
+
 }
