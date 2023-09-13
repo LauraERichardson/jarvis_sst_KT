@@ -24,6 +24,7 @@ compute.snap = function (x, y) {
   
   # mean and sd from three warmest months
   warmest_months <- df %>%
+    filter(date >= as.Date("1985-01-01") & date <= as.Date("2010-12-31")) %>%
     mutate(date = as.Date(date), month = format(date, "%m")) %>% 
     # muatte(month = month.name[as.numeric(format(date, "%m"))]) %>% 
     group_by(month) %>%
@@ -33,10 +34,11 @@ compute.snap = function (x, y) {
     print()
   
   summer_months = warmest_months$month
-  summer_months <- summer_months[order(as.integer(summer_months))]
+  summer_months = summer_months[order(as.integer(summer_months))]
   
   # mean and sd from three coldest months
   coldest_months <- df %>%
+    filter(date >= as.Date("1985-01-01") & date <= as.Date("2010-12-31")) %>%
     mutate(date = as.Date(date), month = format(date, "%m")) %>% 
     # muatte(month = month.name[as.numeric(format(date, "%m"))]) %>% 
     group_by(month) %>%
@@ -50,6 +52,7 @@ compute.snap = function (x, y) {
   
   # mean and sd across three warmest and coldest months (i.e., summer and winter months)
   warmest_months = df %>%
+    filter(date >= as.Date("1985-01-01") & date <= as.Date("2010-12-31")) %>%
     mutate(date = as.Date(date), month = format(date, "%m")) %>%
     group_by(month) %>%
     summarise(climatology = mean(estimate), sd = sd(estimate)) %>%
@@ -60,6 +63,7 @@ compute.snap = function (x, y) {
     print()
   
   coldest_months <- df %>%
+    filter(date >= as.Date("1985-01-01") & date <= as.Date("2010-12-31")) %>%
     mutate(date = as.Date(date), month = format(date, "%m")) %>%
     group_by(month) %>%
     summarise(climatology = mean(estimate), sd = sd(estimate)) %>%
