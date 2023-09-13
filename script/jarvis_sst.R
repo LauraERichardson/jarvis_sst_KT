@@ -37,7 +37,7 @@ sst <- stack(sst_source) %>%
 monthly_mean_sd = sst %>%
   select(year, month, day, sst) %>%
   slice(-c(1, 2)) %>% 
-  filter(year %in% c(1985:2018)) %>%
+  filter(year %in% c(1985:2010)) %>%
   group_by(year, month) %>% 
   summarise(sst = mean(sst)) %>%
   group_by(month) %>%
@@ -55,7 +55,7 @@ grid = sst[1:2, ] %>% select(starts_with("V"))
 
 df = sst %>% 
   slice(-c(1, 2)) %>% 
-  filter(year %in% c(1985:2018)) %>%
+  filter(year %in% c(1985:2010)) %>%
   select(year, month, day, starts_with("V")) %>%
   filter(month %in% warmest_months$month) %>% 
   select(starts_with("V"))
@@ -93,4 +93,3 @@ p2 = df %>%
 
 p1 / p2
 ggsave(last_plot(), filename = "output/jarvis_mean_sd.png", width = 10, height = 10)
-
