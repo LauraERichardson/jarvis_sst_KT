@@ -110,35 +110,42 @@ compute.snap = function (x, y) {
     
     date_i <- df$date[i]
     # print(date_i)
+    start_date <- date_i - years(1)
     
-    # Find the beginning of most recent summer
-    most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
+    # Filter the dataframe for dates within the accumulation period
+    accumulation_period <- df %>%
+      filter(date >= start_date & date <= date_i)
     
-    # If date_i is before summer, subtract one year for the most recent summer
-    if (date_i < most_recent_summer)  most_recent_summer <- most_recent_summer - years(1)
+    accumulation_sums[i] <- sum(accumulation_period$hot_snap)
     
-    most_recent_summer
-    
-    # Check if the most recent summer is not missing ("-Inf")
-    if (!is.infinite(most_recent_summer)) {
-      
-      # Calculate the start date of the accumulation period
-      # hotsnap = three months before the most recent summer
-      start_date <- most_recent_summer - months(3)
-      
-      # Filter the dataframe for dates within the accumulation period
-      accumulation_period <- df %>%
-        filter(date >= start_date & date <= date_i)
-      
-      # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
-      accumulation_sums[i] <- sum(accumulation_period$hot_snap)
-      
-    } else {
-      
-      # If most_recent_summer is "-Inf," set the accumulation sum to NA
-      accumulation_sums[i] <- NA
-      
-    }
+    # # Find the beginning of most recent summer
+    # most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
+    # 
+    # # If date_i is before summer, subtract one year for the most recent summer
+    # if (date_i < most_recent_summer)  most_recent_summer <- most_recent_summer - years(1)
+    # 
+    # most_recent_summer
+    # 
+    # # Check if the most recent summer is not missing ("-Inf")
+    # if (!is.infinite(most_recent_summer)) {
+    #   
+    #   # Calculate the start date of the accumulation period
+    #   # hotsnap = three months before the most recent summer
+    #   start_date <- most_recent_summer - months(3)
+    #   
+    #   # Filter the dataframe for dates within the accumulation period
+    #   accumulation_period <- df %>%
+    #     filter(date >= start_date & date <= date_i)
+    #   
+    #   # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
+    #   accumulation_sums[i] <- sum(accumulation_period$hot_snap)
+    #   
+    # } else {
+    #   
+    #   # If most_recent_summer is "-Inf," set the accumulation sum to NA
+    #   accumulation_sums[i] <- NA
+    #   
+    # }
   }
   
   pb$terminate()
@@ -165,35 +172,43 @@ compute.snap = function (x, y) {
     
     date_i <- df$date[i]
     # print(date_i)
+    start_date <- date_i - years(1)
     
-    # Find the beginning of most recent summer
-    most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
+    # Filter the dataframe for dates within the accumulation period
+    accumulation_period <- df %>%
+      filter(date >= start_date & date <= date_i)
     
-    # If date_i is before summer, subtract one year for the most recent summer
-    if (date_i < most_recent_summer)  most_recent_summer <- most_recent_summer - years(1)
+    accumulation_sums[i] <- sum(accumulation_period$cold_snap)
+    # print(date_i)
     
-    most_recent_summer
-    
-    # Check if the most recent summer is not missing ("-Inf")
-    if (!is.infinite(most_recent_summer)) {
-      
-      # Calculate the start date of the accumulation period
-      # coldsnap = nine months before the most recent summer
-      start_date <- most_recent_summer - months(9)
-      
-      # Filter the dataframe for dates within the accumulation period
-      accumulation_period <- df %>%
-        filter(date >= start_date & date <= date_i)
-      
-      # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
-      accumulation_sums[i] <- sum(accumulation_period$cold_snap)
-      
-    } else {
-      
-      # If most_recent_summer is "-Inf," set the accumulation sum to NA
-      accumulation_sums[i] <- NA
-      
-    }
+    # # Find the beginning of most recent summer
+    # most_recent_summer <- as.Date(paste(year(date_i), summer_months[1], "01", sep = "-"))
+    # 
+    # # If date_i is before summer, subtract one year for the most recent summer
+    # if (date_i < most_recent_summer)  most_recent_summer <- most_recent_summer - years(1)
+    # 
+    # most_recent_summer
+    # 
+    # # Check if the most recent summer is not missing ("-Inf")
+    # if (!is.infinite(most_recent_summer)) {
+    #   
+    #   # Calculate the start date of the accumulation period
+    #   # coldsnap = nine months before the most recent summer
+    #   start_date <- most_recent_summer - months(9)
+    #   
+    #   # Filter the dataframe for dates within the accumulation period
+    #   accumulation_period <- df %>%
+    #     filter(date >= start_date & date <= date_i)
+    #   
+    #   # Calculate the sum of 'HSNAP' for the accumulation period and store it in the vector
+    #   accumulation_sums[i] <- sum(accumulation_period$cold_snap)
+    #   
+    # } else {
+    #   
+    #   # If most_recent_summer is "-Inf," set the accumulation sum to NA
+    #   accumulation_sums[i] <- NA
+    #   
+    # }
   }
   
   pb$terminate()
