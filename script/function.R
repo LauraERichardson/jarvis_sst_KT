@@ -333,4 +333,6 @@ plot.snap = function (df, start = NULL, end = NULL, destfile = NULL, width = 4, 
   print(p1/p2)
   dev.off()
   
+  print(p1/p2)
+  
 }
